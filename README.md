@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## Hello Endpoints Python
 
 A Python "Hello World" skeleton application for Google App Engine using
@@ -81,3 +82,14 @@ See [LICENSE](LICENSE)
 [1]: https://developers.google.com/appengine/docs/python/endpoints/
 [2]: https://developers.google.com/appengine/docs/python/endpoints/gen_clients
 [3]: https://cloud.google.com/console
+=======
+Udacity859
+==========
+## Lesson2
+1. Related Files
+  * templates/index1.html
+  * static/js/hello.js
+
+## Remainder
+1. Change the application field in the app.yaml
+>>>>>>> 7b6931590f07c1d0ca6b1b45e9d235d3b22b0ccb
