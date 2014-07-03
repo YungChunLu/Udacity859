@@ -20,16 +20,26 @@ handlers:
 - url: /js
   static_dir: static/js
 - url: /bootstrap
-  static_dir: static/bootstrap
+  static_dir: static/css/lib/bootstrap
+- url: /css
+  static_dir: static/css
+- url: /img
+  static_dir: static/img
+- url: /partials
+  static_dir: templates/partials
+- url: /fonts
+  static_dir: static/fonts
 - url: /
 # For Lesson2
-  static_files: templates/index1.html
-  upload: templates/index1.html
+#  static_files: templates/index1.html
+#  upload: templates/index1.html
+  static_files: templates/index2.html
+  upload: templates/index2.html
 
 # This handler routes requests to your APIs to your Endpoints code.
 # See https://developers.google.com/appengine/docs/python/endpoints/
 - url: /_ah/spi/.*
-  script: hello.APPLICATION
+  script: ConferenceApi.APPLICATION
 
 # Third party libraries that are included in the App Engine SDK must be listed
 # here if you want to use them. See
