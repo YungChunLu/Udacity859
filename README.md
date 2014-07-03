@@ -11,6 +11,8 @@ Udacity859
   * static/js/hello.js
   * hello.py
 3. Add Profile Form
+  * ConferenceApi.py
+  * static/js/app.js
 
 ## Remainder
 1. Change the application field in the app.yaml
