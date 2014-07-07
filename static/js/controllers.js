@@ -454,7 +454,8 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        angular.forEach(resp.items, function (conference) {
+                        console.log(resp.conferences);
+                        angular.forEach(resp.conferences, function (conference) {
                             $scope.conferences.push(conference);
                         });
                     }
@@ -491,7 +492,8 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        angular.forEach(resp.items, function (conference) {
+                        console.log(resp.conferences);
+                        angular.forEach(resp.conferences, function (conference) {
                             $scope.conferences.push(conference);
                         });
                     }

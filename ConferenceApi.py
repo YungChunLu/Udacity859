@@ -9,9 +9,9 @@ from google.appengine.ext.ndb import msgprop
 
 # TODO: Replace the following lines with client IDs obtained from the APIs
 # Console or Cloud Console.
-#WEB_CLIENT_ID = '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com'
+WEB_CLIENT_ID = '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com'
 #For localhost
-WEB_CLIENT_ID = '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com'
+#WEB_CLIENT_ID = '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com'
 ANDROID_CLIENT_ID = 'replace this with your Android client ID'
 IOS_CLIENT_ID = 'replace this with your iOS client ID'
 ANDROID_AUDIENCE = WEB_CLIENT_ID
@@ -42,6 +42,10 @@ class Conference(messages.Message):
   startDate = message_types.DateTimeField(5)
   endDate = message_types.DateTimeField(6)
   maxAttendees = messages.IntegerField(7)
+  organizerDisplayName = messages.StringField(8)
+
+class ConferenceCollection(messages.Message):
+  conferences = messages.MessageField(Conference, 1, repeated=True)
 
 class ConferenceStore(ndb.Model):
   created_time = ndb.DateTimeProperty(auto_now_add=True)
@@ -49,13 +53,39 @@ class ConferenceStore(ndb.Model):
   seatsAvailable = ndb.IntegerProperty()
   conference = msgprop.MessageProperty(Conference, indexed_fields=["name",
                                                                    "topics",
-                                                                   "city"])
+                                                                   "city",
+                                                                   "organizerDisplayName"])
 
 @endpoints.api(name='conference', version='v1',
                allowed_client_ids=[WEB_CLIENT_ID, ANDROID_CLIENT_ID,
                                    IOS_CLIENT_ID])
 class ConferenceApi(remote.Service):
     """Conference API v1."""
+
+    @endpoints.method(message_types.VoidMessage, ConferenceCollection,
+                      path='queryConferences',
+                      http_method='POST',
+                      name='queryConferences')
+    def queryConferences(self, request):
+      user = endpoints.get_current_user()
+      if user:
+        conferences = [ c.conference for c in ConferenceStore.query().order(ConferenceStore.conference.name).fetch()]
+        return ConferenceCollection(conferences=conferences)
+      else:
+        raise endpoints.UnauthorizedException("Please Create A Account First")
+
+    @endpoints.method(message_types.VoidMessage, ConferenceCollection,
+                      path='getConferencesCreated',
+                      http_method='POST',
+                      name='getConferencesCreated')
+    def getConferencesCreated(self, request):
+      user = endpoints.get_current_user()
+      if user:
+        profile = ProfileStore.get_by_id(user.email())
+        conferences = [ c.conference for c in ConferenceStore.query(ancestor=profile.key).order(ConferenceStore.conference.name).fetch()]
+        return ConferenceCollection(conferences=conferences)
+      else:
+        raise endpoints.UnauthorizedException("Please Create A Account First")
 
     @endpoints.method(Conference, Conference,
                       path='conference/{name, description, topics, city, startDate, endDate, maxAttendees',
@@ -88,7 +118,8 @@ class ConferenceApi(remote.Service):
                                 city=city,
                                 startDate=startDate,
                                 endDate=endDate,
-                                maxAttendees=maxAttendees)
+                                maxAttendees=maxAttendees,
+                                organizerDisplayName=profile.profile.displayName)
         month = startDate.month
         seatsAvailable = maxAttendees
         c = ConferenceStore.get_or_insert(name, parent=profile.key, month=month, seatsAvailable=seatsAvailable)
