@@ -9,9 +9,9 @@ from google.appengine.ext.ndb import msgprop
 
 # TODO: Replace the following lines with client IDs obtained from the APIs
 # Console or Cloud Console.
-WEB_CLIENT_ID = '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com'
+#WEB_CLIENT_ID = '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com'
 #For localhost
-#WEB_CLIENT_ID = '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com'
+WEB_CLIENT_ID = '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com'
 ANDROID_CLIENT_ID = 'replace this with your Android client ID'
 IOS_CLIENT_ID = 'replace this with your iOS client ID'
 ANDROID_AUDIENCE = WEB_CLIENT_ID
@@ -51,10 +51,24 @@ class ConferenceStore(ndb.Model):
   created_time = ndb.DateTimeProperty(auto_now_add=True)
   month = ndb.IntegerProperty()
   seatsAvailable = ndb.IntegerProperty()
-  conference = msgprop.MessageProperty(Conference, indexed_fields=["name",
-                                                                   "topics",
+  conference = msgprop.MessageProperty(Conference, indexed_fields=["topics",
+                                                                   "name",
                                                                    "city",
                                                                    "organizerDisplayName"])
+
+class Field(messages.Enum):
+  CITY, TOPIC, MONTH, MAX_ATTENDEES = range(4)
+
+class Operator(messages.Enum):
+  EQ, LT, GT, LTEQ, GTEQ, NE = range(6)
+
+class Filter(messages.Message):
+  field = messages.EnumField(Field, 1)
+  operator = messages.EnumField(Operator, 2)
+  value = messages.StringField(3)
+
+class Filters(messages.Message):
+  filters = messages.MessageField(Filter, 1, repeated=True)
 
 @endpoints.api(name='conference', version='v1',
                allowed_client_ids=[WEB_CLIENT_ID, ANDROID_CLIENT_ID,
@@ -62,14 +76,66 @@ class ConferenceStore(ndb.Model):
 class ConferenceApi(remote.Service):
     """Conference API v1."""
 
-    @endpoints.method(message_types.VoidMessage, ConferenceCollection,
+    def CITY(self, filter):
+      if filter.operator == Operator.EQ:
+        return (True, "ConferenceStore.conference.city == '%s'" % filter.value)
+      else:
+        return (False, "")
+    def TOPIC(self, filter):
+      if filter.operator == Operator.EQ:
+        return (True, "ConferenceStore.conference.topics == '%s'" % filter.value)
+      elif filter.operator == Operator.NE:
+        return (True, "ConferenceStore.conference.topics != '%s'" % filter.value)
+      else:
+        return (False, "")
+    def MONTH(self, filter):
+      if filter.operator == Operator.EQ:
+        return (True, "ConferenceStore.month == %s" % filter.value)
+      elif filter.operator == Operator.LT:
+        return (True, "ConferenceStore.month < %s" % filter.value)
+      elif filter.operator == Operator.GT:
+        return (True, "ConferenceStore.month > %s" % filter.value)
+      elif filter.operator == Operator.LTEQ:
+        return (True, "ConferenceStore.month <= %s" % filter.value)
+      elif filter.operator == Operator.GTEQ:
+        return (True, "ConferenceStore.month >= %s" % filter.value)
+      elif filter.operator == Operator.NE:
+        return (True, "ConferenceStore.month != %s" % filter.value)
+      else:
+        return (False, "")
+    def MAX_ATTENDEES(self, filter):
+      if filter.operator == Operator.EQ:
+        return (True, "ConferenceStore.conference.maxAttendees == %s" % filter.value)
+      elif filter.operator == Operator.LT:
+        return (True, "ConferenceStore.conference.maxAttendees < %s" % filter.value)
+      elif filter.operator == Operator.GT:
+        return (True, "ConferenceStore.conference.maxAttendees > %s" % filter.value)
+      elif filter.operator == Operator.LTEQ:
+        return (True, "ConferenceStore.conference.maxAttendees <= %s" % filter.value)
+      elif filter.operator == Operator.GTEQ:
+        return (True, "ConferenceStore.conference.maxAttendees >= %s" % filter.value)
+      elif filter.operator == Operator.NE:
+        return (True, "ConferenceStore.conference.maxAttendees != %s" % filter.value)
+      else:
+        return (False, "")
+    def checkFilter(self, filter):
+      return {Field.CITY: self.CITY,
+              Field.TOPIC: self.TOPIC,
+              Field.MONTH: self.MONTH,
+              Field.MAX_ATTENDEES: self.MAX_ATTENDEES}[filter.field](filter)
+
+    @endpoints.method(Filters, ConferenceCollection,
                       path='queryConferences',
                       http_method='POST',
                       name='queryConferences')
     def queryConferences(self, request):
       user = endpoints.get_current_user()
       if user:
-        conferences = [ c.conference for c in ConferenceStore.query().order(ConferenceStore.conference.name).fetch()]
+        queries = [q[1] for q in map(self.checkFilter, request.filters) if q[0]]
+        query = "ndb.AND(%s)" % ','.join(queries)
+        print query
+        #eval(self.checkFilter(request.filters[0])[1])
+        conferences = [ c.conference for c in ConferenceStore.query(eval(query)).fetch()]
         return ConferenceCollection(conferences=conferences)
       else:
         raise endpoints.UnauthorizedException("Please Create A Account First")
@@ -95,7 +161,7 @@ class ConferenceApi(remote.Service):
       user = endpoints.get_current_user()
       if user:
         profile = ProfileStore.get_by_id(user.email())
-        if profile:
+        if not profile:
           mainEmail = user.email()
           p = Profile(userId=user.user_id(),
                             mainEmail=mainEmail,
@@ -145,6 +211,9 @@ class ConferenceApi(remote.Service):
         p = ProfileStore.get_or_insert(mainEmail)
         p.profile = profile
         p.put()
+        for c in ConferenceStore.query(ancestor=p.key).order(ConferenceStore.conference.name).fetch():
+          c.conference.organizerDisplayName = displayName
+          c.put()
         return profile
       else:
         raise endpoints.UnauthorizedException("Authorization required")

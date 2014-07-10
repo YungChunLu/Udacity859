@@ -11,6 +11,16 @@ indexes:
 # your application using appcfg.py.
 
 - kind: ConferenceStore
+  properties:
+  - name: conference.city
+  - name: month
+
+- kind: ConferenceStore
+  properties:
+  - name: month
+  - name: conference.name
+
+- kind: ConferenceStore
   ancestor: yes
   properties:
   - name: conference.name
