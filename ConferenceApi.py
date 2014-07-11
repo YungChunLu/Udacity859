@@ -163,6 +163,25 @@ class ConferenceApi(remote.Service):
       else:
         raise endpoints.UnauthorizedException("Authorization required")
 
+    @endpoints.method(message_types.VoidMessage, ConferenceCollection,
+                      path='getConferencesToAttend',
+                      http_method='POST',
+                      name='getConferencesToAttend')
+    def getConferencesToAttend(self, request):
+      user = endpoints.get_current_user()
+      if user:
+        profile = ProfileStore.get_by_id(user.email()).profile
+        conferenceKeysToAttend = profile.conferenceKeysToAttend
+        conferences = []
+        for k in conferenceKeysToAttend:
+          if k is not 0:
+            key = ndb.Key(ConferenceStore, k)
+            c = key.get()
+            conferences.append(DETAIL_RESOURCE(conference=c.conference, seatsAvailable=c.seatsAvailable))
+        return ConferenceCollection(conferences=conferences)
+      else:
+        raise endpoints.UnauthorizedException("Authorization required")
+
     REQUEST_RESOURCE = endpoints.ResourceContainer(
                           message_types.VoidMessage,
                           websafeKey=messages.IntegerField(1))

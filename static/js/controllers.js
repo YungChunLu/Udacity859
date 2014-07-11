@@ -525,7 +525,12 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         }
                     } else {
                         // The request has succeeded.
-                        $scope.conferences = resp.result.items;
+                        $scope.conferences = [];
+                        angular.forEach(resp.conferences, function (item) {
+                            var conference = item.conference;
+                            conference["seatsAvailable"] = item.seatsAvailable;
+                            $scope.conferences.push(conference);
+                        });
                         $scope.loading = false;
                         $scope.messages = 'Query succeeded : Conferences you will attend (or you have attended)';
                         $scope.alertStatus = 'success';
