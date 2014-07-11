@@ -26,13 +26,15 @@ class Profile(messages.Message):
   displayName = messages.StringField(2)
   mainEmail = messages.StringField(3)
   teeShirtSize = messages.EnumField(TeeShirtSize, 4)
+  conferenceKeysToAttend = messages.IntegerField(5, repeated=True)
 
 class ProfileStore(ndb.Model):
   created_time = ndb.DateTimeProperty(auto_now_add=True)
   profile = msgprop.MessageProperty(Profile, indexed_fields=["userId",
                                                              "mainEmail",
                                                              "displayName",
-                                                             "teeShirtSize"])
+                                                             "teeShirtSize",
+                                                             "conferenceKeysToAttend"])
 
 class Conference(messages.Message):
   name = messages.StringField(1)
@@ -44,9 +46,6 @@ class Conference(messages.Message):
   maxAttendees = messages.IntegerField(7)
   organizerDisplayName = messages.StringField(8)
   websafeKey = messages.IntegerField(9)
-
-class ConferenceCollection(messages.Message):
-  conferences = messages.MessageField(Conference, 1, repeated=True)
 
 class ConferenceStore(ndb.Model):
   created_time = ndb.DateTimeProperty(auto_now_add=True)
@@ -71,6 +70,13 @@ class Filter(messages.Message):
 
 class Filters(messages.Message):
   filters = messages.MessageField(Filter, 1, repeated=True)
+
+class DETAIL_RESOURCE(messages.Message):
+  conference = messages.MessageField(Conference, 1)
+  seatsAvailable = messages.IntegerField(2)
+
+class ConferenceCollection(messages.Message):
+  conferences = messages.MessageField(DETAIL_RESOURCE, 1, repeated=True)
 
 @endpoints.api(name='conference', version='v1',
                allowed_client_ids=[WEB_CLIENT_ID, ANDROID_CLIENT_ID,
@@ -137,9 +143,9 @@ class ConferenceApi(remote.Service):
         queries = [q[1] for q in map(self.checkFilter, request.filters) if q[0]]
         if queries:
           query = "ndb.AND(%s)" % ','.join(queries)
-          conferences = [ c.conference for c in ConferenceStore.query(eval(query)).fetch()]
+          conferences = [ DETAIL_RESOURCE(conference=c.conference, seatsAvailable=c.seatsAvailable) for c in ConferenceStore.query(eval(query)).fetch()]
         else:
-          conferences = [ c.conference for c in ConferenceStore.query().order(ConferenceStore.month).fetch()]
+          conferences = [ DETAIL_RESOURCE(conference=c.conference, seatsAvailable=c.seatsAvailable) for c in ConferenceStore.query().order(ConferenceStore.month).fetch()]
         return ConferenceCollection(conferences=conferences)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
@@ -152,16 +158,15 @@ class ConferenceApi(remote.Service):
       user = endpoints.get_current_user()
       if user:
         profile = ProfileStore.get_by_id(user.email())
-        print profile
         conferences = [ c.conference for c in ConferenceStore.query(ConferenceStore.creator.profile.mainEmail==profile.profile.mainEmail).order(ConferenceStore.conference.name).fetch()]
         return ConferenceCollection(conferences=conferences)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
 
-    Detail_RESOURCE = endpoints.ResourceContainer(
-            message_types.VoidMessage,
-            websafeKey=messages.IntegerField(1))
-    @endpoints.method(Detail_RESOURCE, Conference,
+    REQUEST_RESOURCE = endpoints.ResourceContainer(
+                          message_types.VoidMessage,
+                          websafeKey=messages.IntegerField(1))
+    @endpoints.method(REQUEST_RESOURCE, DETAIL_RESOURCE,
                       path='getConference/{websafeKey}',
                       http_method='POST',
                       name='getConference')
@@ -170,8 +175,28 @@ class ConferenceApi(remote.Service):
       if user:
         key = ndb.Key(ConferenceStore, request.websafeKey)
         conferenceStore = key.get()
-        print conferenceStore
-        return conferenceStore.conference
+        return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
+      else:
+        raise endpoints.UnauthorizedException("Authorization required")
+
+    @endpoints.method(REQUEST_RESOURCE, DETAIL_RESOURCE,
+                      path='registerForConference/{websafeKey}',
+                      http_method='GET',
+                      name='registerForConference')
+    def registerForConference(self, request):
+      user = endpoints.get_current_user()
+      if user:
+        p = ProfileStore.get_by_id(user.email())
+        key = ndb.Key(ConferenceStore, request.websafeKey)
+        conferenceStore = key.get()
+        if request.websafeKey in p.profile.conferenceKeysToAttend:
+          raise endpoints.NotFoundException("Try again")
+        else:
+          p.profile.conferenceKeysToAttend.append(request.websafeKey)
+          p.put()
+          conferenceStore.seatsAvailable -= 1
+          conferenceStore.put()
+          return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
 
@@ -186,9 +211,9 @@ class ConferenceApi(remote.Service):
         if not profile:
           mainEmail = user.email()
           p = Profile(userId=user.user_id(),
-                            mainEmail=mainEmail,
-                            displayName=mainEmail.split("@")[0],
-                            teeShirtSize=TeeShirtSize.NOT_SPECIFIED)
+                      mainEmail=mainEmail,
+                      displayName=mainEmail.split("@")[0],
+                      teeShirtSize=TeeShirtSize.NOT_SPECIFIED)
           profile = ProfileStore.get_or_insert(mainEmail)
           profile.profile = p
           profile.put()
@@ -213,7 +238,6 @@ class ConferenceApi(remote.Service):
         seatsAvailable = maxAttendees
         c = ConferenceStore(creator=profile, month=month, seatsAvailable=seatsAvailable, conference=conference)
         c.put()
-        print c.key
         conference.websafeKey = c.key.id()
         c.conference = conference
         c.put()
@@ -233,11 +257,11 @@ class ConferenceApi(remote.Service):
         displayName = request.displayName
         teeShirtSize = request.teeShirtSize
 
-        profile = Profile(userId=userId, mainEmail=mainEmail, displayName=displayName, teeShirtSize=teeShirtSize)
+        profile = Profile(userId=userId, mainEmail=mainEmail, displayName=displayName, teeShirtSize=teeShirtSize, conferenceKeysToAttend=[0])
         p = ProfileStore.get_or_insert(mainEmail)
         p.profile = profile
         p.put()
-        for c in ConferenceStore.query(ancestor=p.key).order(ConferenceStore.conference.name).fetch():
+        for c in ConferenceStore.query(ConferenceStore.creator.profile.mainEmail==profile.mainEmail).fetch():
           c.conference.organizerDisplayName = displayName
           c.put()
         return profile

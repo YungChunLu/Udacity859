@@ -17,16 +17,18 @@
                 <h5>{{conference.description}}</h5>
                 <div>
                     <label for="registered">Registered/Open: </label>
-                    <span id="registered">{{conference.maxAttendees - conference.seatsAvailable}} / {{conference.maxAttendees}}</span>
+                    <span id="registered">{{conference.maxAttendees - seatsAvailable}} / {{conference.maxAttendees}}</span>
                 </div>
                 <div>
                     <label for="organizer">Organizer: </label>
                     <span id="organizer">{{conference.organizerDisplayName}}</span>
                 </div>
-                <p><a class="btn btn-primary" ng-hide="isUserAttending" ng-click="registerForConference()"
+                <div ng-hide="seatsAvailable <= 0">
+                    <p><a class="btn btn-primary" ng-hide="isUserAttending" ng-click="registerForConference()"
                         ng-disabled="loading">Register</a></p>
-                <p><a class="btn btn-primary" ng-show="isUserAttending" ng-click="unregisterFromConference()"
+                    <p><a class="btn btn-primary" ng-show="isUserAttending" ng-click="unregisterFromConference()"
                         ng-disabled="loading">Unregister</a></p>
+                </div>
             </div>
 
             <form class="form" novalidate role="form">

@@ -65,9 +65,8 @@ conferenceApp.controllers.controller('MyProfileCtrl',
                             if (resp.error) {
                                 // Failed to get a user profile.
                             } else {
-                                // Succeeded to get the user profile.
-                                $scope.profile.displayName = resp.result.displayName;
-                                $scope.profile.teeShirtSize = resp.result.teeShirtSize;
+                                // Succeeded to get the user profile.                                $scope.profile.displayName = resp.result.displayName;
+                                $scope.profile = resp.result;
                                 $scope.initialProfile = resp.result;
                             }
                         });
@@ -454,7 +453,9 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        angular.forEach(resp.conferences, function (conference) {
+                        console.log(resp);
+                        angular.forEach(resp.conferences, function (item) {
+                            conference["seatsAvailable"] = item.seatsAvailable;
                             $scope.conferences.push(conference);
                         });
                     }
@@ -491,7 +492,6 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        console.log(resp.conferences);
                         angular.forEach(resp.conferences, function (conference) {
                             $scope.conferences.push(conference);
                         });
@@ -563,14 +563,15 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
                 if (resp.error) {
                     // The request has failed.
                     var errorMessage = resp.error.message || '';
-                    $scope.messages = 'Failed to get the conference : ' + $routeParams.websafeKey
+                    $scope.messages = 'Failed to get the conference : ' + $routeParams.websafeConferenceKey
                         + ' ' + errorMessage;
                     $scope.alertStatus = 'warning';
                     $log.error($scope.messages);
                 } else {
                     // The request has succeeded.
                     $scope.alertStatus = 'success';
-                    $scope.conference = resp.result;
+                    $scope.conference = resp.result.conference;
+                    $scope.seatsAvailable = resp.result.seatsAvailable;
                 }
             });
         });
@@ -584,12 +585,15 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
                     // Failed to get a user profile.
                 } else {
                     var profile = resp.result;
-                    for (var i = 0; i < profile.conferenceKeysToAttend.length; i++) {
-                        if ($routeParams.websafeConferenceKey == profile.conferenceKeysToAttend[i]) {
-                            // The user is attending the conference.
-                            $scope.alertStatus = 'info';
-                            $scope.messages = 'You are attending this conference';
-                            $scope.isUserAttending = true;
+                    console.log(profile.conferenceKeysToAttend);
+                    if (profile.conferenceKeysToAttend) {
+                        for (var i = 0; i < profile.conferenceKeysToAttend.length; i++) {
+                            if ($routeParams.websafeConferenceKey == profile.conferenceKeysToAttend[i]) {
+                                // The user is attending the conference.
+                                $scope.alertStatus = 'info';
+                                $scope.messages = 'You are attending this conference';
+                                $scope.isUserAttending = true;
+                            }
                         }
                     }
                 }
@@ -604,7 +608,7 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
     $scope.registerForConference = function () {
         $scope.loading = true;
         gapi.client.conference.registerForConference({
-            websafeConferenceKey: $routeParams.websafeConferenceKey
+            websafeKey: $routeParams.websafeConferenceKey
         }).execute(function (resp) {
             $scope.$apply(function () {
                 $scope.loading = false;
@@ -625,7 +629,7 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
                         $scope.messages = 'Registered for the conference';
                         $scope.alertStatus = 'success';
                         $scope.isUserAttending = true;
-                        $scope.conference.seatsAvailable = $scope.conference.seatsAvailable - 1;
+                        $scope.seatsAvailable = resp.seatsAvailable;
                     } else {
                         $scope.messages = 'Failed to register for the conference';
                         $scope.alertStatus = 'warning';
