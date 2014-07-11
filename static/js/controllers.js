@@ -453,8 +453,8 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        console.log(resp);
                         angular.forEach(resp.conferences, function (item) {
+                            var conference = item.conference;
                             conference["seatsAvailable"] = item.seatsAvailable;
                             $scope.conferences.push(conference);
                         });
@@ -492,7 +492,9 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        angular.forEach(resp.conferences, function (conference) {
+                        angular.forEach(resp.conferences, function (item) {
+                            var conference = item.conference;
+                            conference["seatsAvailable"] = item.seatsAvailable;
                             $scope.conferences.push(conference);
                         });
                     }
@@ -585,7 +587,6 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
                     // Failed to get a user profile.
                 } else {
                     var profile = resp.result;
-                    console.log(profile.conferenceKeysToAttend);
                     if (profile.conferenceKeysToAttend) {
                         for (var i = 0; i < profile.conferenceKeysToAttend.length; i++) {
                             if ($routeParams.websafeConferenceKey == profile.conferenceKeysToAttend[i]) {
@@ -645,7 +646,7 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
     $scope.unregisterFromConference = function () {
         $scope.loading = true;
         gapi.client.conference.unregisterFromConference({
-            websafeConferenceKey: $routeParams.websafeConferenceKey
+            websafeKey: $routeParams.websafeConferenceKey
         }).execute(function (resp) {
             $scope.$apply(function () {
                 $scope.loading = false;
@@ -664,12 +665,12 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
                         // Unregister succeeded.
                         $scope.messages = 'Unregistered from the conference';
                         $scope.alertStatus = 'success';
-                        $scope.conference.seatsAvailable = $scope.conference.seatsAvailable + 1;
+                        $scope.seatsAvailable = resp.seatsAvailable;
                         $scope.isUserAttending = false;
                         $log.info($scope.messages);
                     } else {
                         var errorMessage = resp.error.message || '';
-                        $scope.messages = 'Failed to unregister from the conference : ' + $routeParams.websafeKey +
+                        $scope.messages = 'Failed to unregister from the conference : ' + $routeParams.websafeConferenceKey +
                             ' : ' + errorMessage;
                         $scope.messages = 'Failed to unregister from the conference';
                         $scope.alertStatus = 'warning';

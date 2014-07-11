@@ -158,7 +158,7 @@ class ConferenceApi(remote.Service):
       user = endpoints.get_current_user()
       if user:
         profile = ProfileStore.get_by_id(user.email())
-        conferences = [ c.conference for c in ConferenceStore.query(ConferenceStore.creator.profile.mainEmail==profile.profile.mainEmail).order(ConferenceStore.conference.name).fetch()]
+        conferences = [ DETAIL_RESOURCE(conference=c.conference, seatsAvailable=c.seatsAvailable) for c in ConferenceStore.query(ConferenceStore.creator.profile.mainEmail==profile.profile.mainEmail).order(ConferenceStore.conference.name).fetch()]
         return ConferenceCollection(conferences=conferences)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
@@ -195,6 +195,27 @@ class ConferenceApi(remote.Service):
           p.profile.conferenceKeysToAttend.append(request.websafeKey)
           p.put()
           conferenceStore.seatsAvailable -= 1
+          conferenceStore.put()
+          return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
+      else:
+        raise endpoints.UnauthorizedException("Authorization required")
+
+    @endpoints.method(REQUEST_RESOURCE, DETAIL_RESOURCE,
+                      path='unregisterFromConference/{websafeKey}',
+                      http_method='GET',
+                      name='unregisterFromConference')
+    def unregisterFromConference(self, request):
+      user = endpoints.get_current_user()
+      if user:
+        p = ProfileStore.get_by_id(user.email())
+        key = ndb.Key(ConferenceStore, request.websafeKey)
+        conferenceStore = key.get()
+        if request.websafeKey not in p.profile.conferenceKeysToAttend:
+          raise endpoints.NotFoundException("Try again")
+        else:
+          p.profile.conferenceKeysToAttend.remove(request.websafeKey)
+          p.put()
+          conferenceStore.seatsAvailable += 1
           conferenceStore.put()
           return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
       else:
