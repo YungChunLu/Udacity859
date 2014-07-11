@@ -43,6 +43,7 @@ class Conference(messages.Message):
   endDate = message_types.DateTimeField(6)
   maxAttendees = messages.IntegerField(7)
   organizerDisplayName = messages.StringField(8)
+  websafeKey = messages.IntegerField(9)
 
 class ConferenceCollection(messages.Message):
   conferences = messages.MessageField(Conference, 1, repeated=True)
@@ -51,6 +52,7 @@ class ConferenceStore(ndb.Model):
   created_time = ndb.DateTimeProperty(auto_now_add=True)
   month = ndb.IntegerProperty()
   seatsAvailable = ndb.IntegerProperty()
+  creator = ndb.StructuredProperty(ProfileStore)
   conference = msgprop.MessageProperty(Conference, indexed_fields=["topics",
                                                                    "name",
                                                                    "city",
@@ -76,6 +78,7 @@ class Filters(messages.Message):
 class ConferenceApi(remote.Service):
     """Conference API v1."""
 
+    # Those query generating functions of filters
     def CITY(self, filter):
       if filter.operator == Operator.EQ:
         return (True, "ConferenceStore.conference.city == '%s'" % filter.value)
@@ -132,13 +135,14 @@ class ConferenceApi(remote.Service):
       user = endpoints.get_current_user()
       if user:
         queries = [q[1] for q in map(self.checkFilter, request.filters) if q[0]]
-        query = "ndb.AND(%s)" % ','.join(queries)
-        print query
-        #eval(self.checkFilter(request.filters[0])[1])
-        conferences = [ c.conference for c in ConferenceStore.query(eval(query)).fetch()]
+        if queries:
+          query = "ndb.AND(%s)" % ','.join(queries)
+          conferences = [ c.conference for c in ConferenceStore.query(eval(query)).fetch()]
+        else:
+          conferences = [ c.conference for c in ConferenceStore.query().order(ConferenceStore.month).fetch()]
         return ConferenceCollection(conferences=conferences)
       else:
-        raise endpoints.UnauthorizedException("Please Create A Account First")
+        raise endpoints.UnauthorizedException("Authorization required")
 
     @endpoints.method(message_types.VoidMessage, ConferenceCollection,
                       path='getConferencesCreated',
@@ -148,10 +152,28 @@ class ConferenceApi(remote.Service):
       user = endpoints.get_current_user()
       if user:
         profile = ProfileStore.get_by_id(user.email())
-        conferences = [ c.conference for c in ConferenceStore.query(ancestor=profile.key).order(ConferenceStore.conference.name).fetch()]
+        print profile
+        conferences = [ c.conference for c in ConferenceStore.query(ConferenceStore.creator.profile.mainEmail==profile.profile.mainEmail).order(ConferenceStore.conference.name).fetch()]
         return ConferenceCollection(conferences=conferences)
       else:
-        raise endpoints.UnauthorizedException("Please Create A Account First")
+        raise endpoints.UnauthorizedException("Authorization required")
+
+    Detail_RESOURCE = endpoints.ResourceContainer(
+            message_types.VoidMessage,
+            websafeKey=messages.IntegerField(1))
+    @endpoints.method(Detail_RESOURCE, Conference,
+                      path='getConference/{websafeKey}',
+                      http_method='POST',
+                      name='getConference')
+    def getConference(self, request):
+      user = endpoints.get_current_user()
+      if user:
+        key = ndb.Key(ConferenceStore, request.websafeKey)
+        conferenceStore = key.get()
+        print conferenceStore
+        return conferenceStore.conference
+      else:
+        raise endpoints.UnauthorizedException("Authorization required")
 
     @endpoints.method(Conference, Conference,
                       path='conference/{name, description, topics, city, startDate, endDate, maxAttendees',
@@ -185,15 +207,19 @@ class ConferenceApi(remote.Service):
                                 startDate=startDate,
                                 endDate=endDate,
                                 maxAttendees=maxAttendees,
-                                organizerDisplayName=profile.profile.displayName)
+                                organizerDisplayName=profile.profile.displayName,
+                                websafeKey=None)
         month = startDate.month
         seatsAvailable = maxAttendees
-        c = ConferenceStore.get_or_insert(name, parent=profile.key, month=month, seatsAvailable=seatsAvailable)
+        c = ConferenceStore(creator=profile, month=month, seatsAvailable=seatsAvailable, conference=conference)
+        c.put()
+        print c.key
+        conference.websafeKey = c.key.id()
         c.conference = conference
         c.put()
         return conference
       else:
-        raise endpoints.UnauthorizedException("Please Create A Account First")
+        raise endpoints.UnauthorizedException("Authorization required")
 
     @endpoints.method(Profile, Profile,
                       path='profile/{displayName, teeShirtSize}',

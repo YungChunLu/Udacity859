@@ -454,7 +454,6 @@ conferenceApp.controllers.controller('ShowConferenceCtrl', function ($scope, $lo
                         $log.info($scope.messages);
 
                         $scope.conferences = [];
-                        console.log(resp.conferences);
                         angular.forEach(resp.conferences, function (conference) {
                             $scope.conferences.push(conference);
                         });
@@ -557,7 +556,7 @@ conferenceApp.controllers.controller('ConferenceDetailCtrl', function ($scope, $
     $scope.init = function () {
         $scope.loading = true;
         gapi.client.conference.getConference({
-            websafeConferenceKey: $routeParams.websafeConferenceKey
+            websafeKey: $routeParams.websafeConferenceKey
         }).execute(function (resp) {
             $scope.$apply(function () {
                 $scope.loading = false;

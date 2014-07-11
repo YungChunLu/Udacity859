@@ -17,6 +17,11 @@ indexes:
 
 - kind: ConferenceStore
   properties:
+  - name: creator.profile.mainEmail
+  - name: conference.name
+
+- kind: ConferenceStore
+  properties:
   - name: month
   - name: conference.name
 
