@@ -7,10 +7,9 @@ from google.appengine.ext.ndb import msgprop
 
 
 
-# TODO: Replace the following lines with client IDs obtained from the APIs
-# Console or Cloud Console.
+#For Products
 #WEB_CLIENT_ID = '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com'
-#For localhost
+#For Local Test
 WEB_CLIENT_ID = '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com'
 ANDROID_CLIENT_ID = 'replace this with your Android client ID'
 IOS_CLIENT_ID = 'replace this with your iOS client ID'
