@@ -4,7 +4,7 @@ from protorpc import message_types
 from protorpc import remote
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
-
+from google.appengine.api import memcache
 
 
 #For Products
@@ -191,8 +191,12 @@ class ConferenceApi(remote.Service):
     def getConference(self, request):
       user = endpoints.get_current_user()
       if user:
-        key = ndb.Key(ConferenceStore, request.websafeKey)
-        conferenceStore = key.get()
+        # Memcache
+        conferenceStore = memcache.get(str(request.websafeKey))
+        if conferenceStore is None:
+          key = ndb.Key(ConferenceStore, request.websafeKey)
+          conferenceStore = key.get()
+          memcache.add(str(request.websafeKey), conferenceStore)
         return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
@@ -208,12 +212,17 @@ class ConferenceApi(remote.Service):
         key = ndb.Key(ConferenceStore, request.websafeKey)
         conferenceStore = key.get()
         if request.websafeKey in p.profile.conferenceKeysToAttend:
-          raise endpoints.NotFoundException("Try again")
+          raise endpoints.NotFoundException("Error")
         else:
           p.profile.conferenceKeysToAttend.append(request.websafeKey)
           p.put()
           conferenceStore.seatsAvailable -= 1
           conferenceStore.put()
+          # Memcache
+          if memcache.get(user.email()) is not None:
+            memcache.replace(user.email(), p.profile)
+          if memcache.get(str(request.websafeKey)) is not None:
+            memcache.replace(str(request.websafeKey), conferenceStore)
           return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
@@ -229,12 +238,17 @@ class ConferenceApi(remote.Service):
         key = ndb.Key(ConferenceStore, request.websafeKey)
         conferenceStore = key.get()
         if request.websafeKey not in p.profile.conferenceKeysToAttend:
-          raise endpoints.NotFoundException("Try again")
+          raise endpoints.NotFoundException("Error")
         else:
           p.profile.conferenceKeysToAttend.remove(request.websafeKey)
           p.put()
           conferenceStore.seatsAvailable += 1
           conferenceStore.put()
+          # Memcache
+          if memcache.get(user.email()) is not None:
+            memcache.replace(user.email(), p.profile)
+          if memcache.get(str(request.websafeKey)) is not None:
+            memcache.replace(str(request.websafeKey), conferenceStore)
           return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
@@ -300,6 +314,11 @@ class ConferenceApi(remote.Service):
         p = ProfileStore.get_or_insert(mainEmail)
         p.profile = profile
         p.put()
+
+        # Memcache
+        if memcache.get(mainEmail) is not None:
+          memcache.replace(mainEmail, profile)
+
         for c in ConferenceStore.query(ConferenceStore.creator.profile.mainEmail==profile.mainEmail).fetch():
           c.conference.organizerDisplayName = displayName
           c.put()
@@ -313,15 +332,22 @@ class ConferenceApi(remote.Service):
     def getProfile(self, request):
       user = endpoints.get_current_user()
       if user:
-        P = ProfileStore.get_by_id(user.email())
-        if P:
-          return P.profile
+        profile = memcache.get(user.email())
+        if profile is None:
+          P = ProfileStore.get_by_id(user.email())
+          if P:
+            memcache.add(user.email(), P.profile)
+            return P.profile
+          else:
+            userId = user.user_id()
+            mainEmail = user.email()
+            displayName = mainEmail.split("@")[0] if mainEmail else "Your name will go here"
+            teeShirtSize = TeeShirtSize.NOT_SPECIFIED
+            profile = Profile(userId=userId, mainEmail=mainEmail, displayName=displayName, teeShirtSize=teeShirtSize)
+            memcache.add(user.email(), profile)
+            return profile
         else:
-          userId = user.user_id()
-          mainEmail = user.email()
-          displayName = mainEmail.split("@")[0] if mainEmail else "Your name will go here"
-          teeShirtSize = TeeShirtSize.NOT_SPECIFIED
-          return Profile(userId=userId, mainEmail=mainEmail, displayName=displayName, teeShirtSize=teeShirtSize)
+          return profile
       else:
         raise endpoints.UnauthorizedException("Authorization required")
 
