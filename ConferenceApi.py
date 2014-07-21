@@ -8,9 +8,9 @@ from google.appengine.api import memcache
 
 
 #For Products
-#WEB_CLIENT_ID = '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com'
+#WEB_CLIENT_ID = 'Your Application ID for product'
 #For Local Test
-WEB_CLIENT_ID = '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com'
+#WEB_CLIENT_ID = 'Your Application ID for localhost'
 ANDROID_CLIENT_ID = 'replace this with your Android client ID'
 IOS_CLIENT_ID = 'replace this with your iOS client ID'
 ANDROID_AUDIENCE = WEB_CLIENT_ID
@@ -76,6 +76,9 @@ class DETAIL_RESOURCE(messages.Message):
 
 class ConferenceCollection(messages.Message):
   conferences = messages.MessageField(DETAIL_RESOURCE, 1, repeated=True)
+
+class Announcement(messages.Message):
+  message = messages.StringField(1)
 
 @endpoints.api(name='conference', version='v1',
                allowed_client_ids=[WEB_CLIENT_ID, ANDROID_CLIENT_ID,
@@ -214,16 +217,25 @@ class ConferenceApi(remote.Service):
         if request.websafeKey in p.profile.conferenceKeysToAttend:
           raise endpoints.NotFoundException("Error")
         else:
-          p.profile.conferenceKeysToAttend.append(request.websafeKey)
-          p.put()
-          conferenceStore.seatsAvailable -= 1
-          conferenceStore.put()
-          # Memcache
-          if memcache.get(user.email()) is not None:
-            memcache.replace(user.email(), p.profile)
-          if memcache.get(str(request.websafeKey)) is not None:
-            memcache.replace(str(request.websafeKey), conferenceStore)
-          return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
+          if conferenceStore.seatsAvailable < 1:
+            raise endpoints.NotFoundException("Sold Out")
+          else:
+            p.profile.conferenceKeysToAttend.append(request.websafeKey)
+            p.put()
+            conferenceStore.seatsAvailable -= 1
+            conferenceStore.put()
+            # Memcache
+            if conferenceStore.seatsAvailable <= 5:
+              announcement = Announcement(message="Last chance to attend! %s is going to be unavailable!" % conferenceStore.conference.name)
+              if memcache.get("RECENT_ANNOUNCEMENT") is None:
+                memcache.add("RECENT_ANNOUNCEMENT", announcement)
+              else:
+                memcache.replace("RECENT_ANNOUNCEMENT", announcement)
+            if memcache.get(user.email()) is not None:
+              memcache.replace(user.email(), p.profile)
+            if memcache.get(str(request.websafeKey)) is not None:
+              memcache.replace(str(request.websafeKey), conferenceStore)
+            return DETAIL_RESOURCE(conference=conferenceStore.conference, seatsAvailable=conferenceStore.seatsAvailable)
       else:
         raise endpoints.UnauthorizedException("Authorization required")
 
@@ -351,4 +363,9 @@ class ConferenceApi(remote.Service):
       else:
         raise endpoints.UnauthorizedException("Authorization required")
 
+    @endpoints.method(message_types.VoidMessage, Announcement,
+                      path="announcement", http_method="GET",
+                      name="announcement")
+    def announcement(self, request):
+      return memcache.get("RECENT_ANNOUNCEMENT")
 APPLICATION = endpoints.api_server([ConferenceApi])

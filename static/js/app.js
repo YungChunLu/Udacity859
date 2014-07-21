@@ -87,9 +87,9 @@ app.constant('HTTP_ERRORS', {
 app.factory('oauth2Provider', function ($modal) {
     var oauth2Provider = {
         //For Products
-        //CLIENT_ID: '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com',
+        CLIENT_ID: '588516474194-ick0d5d3788sf2tqj1hpfuq2bn4pa65r.apps.googleusercontent.com',
         //For Local Test
-        CLIENT_ID: '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com',
+        //CLIENT_ID: '588516474194-nvessqc4mhp2rvufhpkm9oc53bhsfl9n.apps.googleusercontent.com',
         SCOPES: 'https://www.googleapis.com/auth/userinfo.email profile',
         signedIn: false
     };

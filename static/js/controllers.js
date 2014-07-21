@@ -64,10 +64,15 @@ conferenceApp.controllers.controller('MyProfileCtrl',
                             $scope.loading = false;
                             if (resp.error) {
                                 // Failed to get a user profile.
+                                var errorMessage = resp.error.message || '';
+                                $scope.messages = 'Failed to update a profile : ' + errorMessage;
+                                $scope.alertStatus = 'warning';
+                                $log.error($scope.messages + 'Profile : ' + JSON.stringify($scope.profile));
                             } else {
-                                // Succeeded to get the user profile.                                $scope.profile.displayName = resp.result.displayName;
-                                $scope.profile = resp.result;
-                                $scope.initialProfile = resp.result;
+                                // Succeeded to get the user profile.
+                                //$scope.profile.displayName = resp.result.displayName;
+                                $scope.profile = resp;
+                                $scope.initialProfile = resp;
                             }
                         });
                     }
