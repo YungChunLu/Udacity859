@@ -5,12 +5,13 @@ from protorpc import remote
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
 from google.appengine.api import memcache
+from google.appengine.api import taskqueue
 
 
 #For Products
-#WEB_CLIENT_ID = 'Your Application ID for product'
+WEB_CLIENT_ID = 'Your Client ID for Product'
 #For Local Test
-#WEB_CLIENT_ID = 'Your Application ID for localhost'
+#WEB_CLIENT_ID = 'Your Client ID for Localhost'
 ANDROID_CLIENT_ID = 'replace this with your Android client ID'
 IOS_CLIENT_ID = 'replace this with your iOS client ID'
 ANDROID_AUDIENCE = WEB_CLIENT_ID
@@ -266,7 +267,7 @@ class ConferenceApi(remote.Service):
         raise endpoints.UnauthorizedException("Authorization required")
 
     @endpoints.method(Conference, Conference,
-                      path='conference/{name, description, topics, city, startDate, endDate, maxAttendees',
+                      path='conference/{name, description, topics, city, startDate, endDate, maxAttendees}',
                       http_method='POST',
                       name='createConference')
     def createConference(self, request):
@@ -306,6 +307,15 @@ class ConferenceApi(remote.Service):
         conference.websafeKey = c.key.id()
         c.conference = conference
         c.put()
+
+        # Add Task Queue
+        taskqueue.add(url="/task/sendEmail", params={"email": user.email(),
+                                                     "topics": ",".join(topics),
+                                                     "city": city,
+                                                     "startDate": startDate.ctime(),
+                                                     "endDate": endDate.ctime(),
+                                                     "maxAttendees": maxAttendees,
+                                                     "name": profile.profile.displayName})
         return conference
       else:
         raise endpoints.UnauthorizedException("Authorization required")

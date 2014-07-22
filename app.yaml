@@ -36,11 +36,18 @@ handlers:
 
 # This handler routes requests to your APIs to your Endpoints code.
 # See https://developers.google.com/appengine/docs/python/endpoints/
+- url: /task/sendEmail
+  script: EmailApi.app
+  login: admin
 - url: /_ah/spi/.*
   # For Hello World App
   #script: hello.APPLICATION
   # For Conference Central App
   script: ConferenceApi.APPLICATION
+
+# Enable Email
+inbound_services:
+- mail
 
 # Third party libraries that are included in the App Engine SDK must be listed
 # here if you want to use them. See
@@ -52,11 +59,11 @@ handlers:
 # installed in the Python environment are not loaded by the App Engine
 # development server or deployment tools.
 libraries:
-
 # You must include the Endpoints library if you wish to serve an API.
 - name: endpoints
   version: 1.0
-
+- name: webapp2
+  version: latest
 # The pycrypto library is used for OAuth 2, and is also a requirement for
 # APIs that wish to authenticate users.
 - name: pycrypto

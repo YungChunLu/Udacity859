@@ -847,3 +847,9 @@ conferenceApp.controllers.controller('DatepickerCtrl', function ($scope) {
     $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'shortDate'];
     $scope.format = $scope.formats[0];
 });
+
+conferenceApp.controllers.controller('SendEmail',
+    function ($scope, $log, oauth2Provider, HTTP_ERRORS) {
+        gapi.client.conference.sendEmail().execute(function (resp) {
+            console.log(resp);});
+})
