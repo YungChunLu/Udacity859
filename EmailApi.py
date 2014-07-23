@@ -1,22 +1,6 @@
-# import endpoints
-# from protorpc import messages
-# from protorpc import message_types
-# from protorpc import remote
 import webapp2
 from google.appengine.api import mail
-# class Conference(messages.Message):
-#   name = messages.StringField(1)
-#   description = messages.StringField(2)
-#   topics = messages.StringField(3, repeated=True)
-#   city = messages.StringField(4)
-#   startDate = message_types.DateTimeField(5)
-#   endDate = message_types.DateTimeField(6)
-#   maxAttendees = messages.IntegerField(7)
-#   organizerDisplayName = messages.StringField(8)
-#   websafeKey = messages.IntegerField(9)
 
-# @endpoints.api(name='sendEmail', version='v1',
-#                allowed_client_ids=[])
 class EmailApi(webapp2.RequestHandler):
   def post(self):
     email = self.request.get("email")

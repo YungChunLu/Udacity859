@@ -9,7 +9,7 @@ from google.appengine.api import taskqueue
 
 
 #For Products
-WEB_CLIENT_ID = 'Your Client ID for Product'
+#WEB_CLIENT_ID = 'Your Client ID for Product'
 #For Local Test
 #WEB_CLIENT_ID = 'Your Client ID for Localhost'
 ANDROID_CLIENT_ID = 'replace this with your Android client ID'

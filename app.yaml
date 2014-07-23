@@ -3,7 +3,7 @@
 # https://developers.google.com/appengine/docs/python/config/appconfig
 # for details.
 
-application: Your Application Id
+application: newmilkta-udacity859
 version: 1
 runtime: python27
 threadsafe: true

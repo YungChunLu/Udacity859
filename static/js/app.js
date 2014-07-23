@@ -24,10 +24,6 @@ var app = angular.module('conferenceApp',
                     templateUrl: '/partials/create_conferences.html',
                     controller: 'CreateConferenceCtrl'
                 }).
-                when('/conference/create/sendEmail', {
-                    templateUrl: '/partials/sendEmail.html',
-                    controller: 'SendEmail'
-                }).
                 when('/conference/detail/:websafeConferenceKey', {
                     templateUrl: '/partials/conference_detail.html',
                     controller: 'ConferenceDetailCtrl'
@@ -91,7 +87,7 @@ app.constant('HTTP_ERRORS', {
 app.factory('oauth2Provider', function ($modal) {
     var oauth2Provider = {
         //For Products
-        CLIENT_ID: 'Your Client ID for Product',
+        //CLIENT_ID: 'Your Client ID for Product',
         //For Local Test
         //CLIENT_ID: 'Your Client ID for Localhost',
         SCOPES: 'https://www.googleapis.com/auth/userinfo.email profile',
